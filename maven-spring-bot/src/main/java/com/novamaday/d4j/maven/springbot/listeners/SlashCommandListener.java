@@ -3,8 +3,11 @@ package com.novamaday.d4j.maven.springbot.listeners;
 import com.novamaday.d4j.maven.springbot.commands.SlashCommand;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import io.micrometer.context.ContextRegistry;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 
 import java.util.Collection;
@@ -17,6 +20,20 @@ public class SlashCommandListener {
 
     public SlashCommandListener(List<SlashCommand> slashCommands, GatewayDiscordClient client) {
         commands = slashCommands;
+
+        Hooks.enableAutomaticContextPropagation();
+
+        // To deal with the entire MDC (if we ensured no third-party code modifies it):
+        // ContextRegistry.getInstance().registerThreadLocalAccessor(new MdcAccessor());
+
+        // To deal with an individual key in the MDC:
+        ContextRegistry.getInstance().registerThreadLocalAccessor(
+            "key",
+            () -> MDC.get("key"),
+            value -> MDC.put("key", value),
+            () -> MDC.remove("key"));
+
+        MDC.put("key", "Hello");
 
         client.on(ChatInputInteractionEvent.class, this::handle).subscribe();
     }
